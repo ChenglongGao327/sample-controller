@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package larged
 
 import (
 	"context"
@@ -28,10 +28,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
+	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	listercorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -70,8 +72,15 @@ type Controller struct {
 
 	deploymentsLister appslisters.DeploymentLister
 	deploymentsSynced cache.InformerSynced
-	foosLister        listers.FooLister
-	foosSynced        cache.InformerSynced
+
+	serviceLister listercorev1.ServiceLister
+	serviceSynced cache.InformerSynced
+
+	endpointLister listercorev1.EndpointsLister
+	endpointSynced cache.InformerSynced
+
+	foosLister listers.FooLister
+	foosSynced cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -89,6 +98,8 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
+	serviceInformer corev1informers.ServiceInformer,
+	endpointInformer corev1informers.EndpointsInformer,
 	fooInformer informers.FooInformer) *Controller {
 
 	// Create event broadcaster
@@ -101,11 +112,15 @@ func NewController(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	controller := &Controller{
+	c := &Controller{
 		kubeclientset:     kubeclientset,
 		sampleclientset:   sampleclientset,
 		deploymentsLister: deploymentInformer.Lister(),
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
+		serviceLister:     serviceInformer.Lister(),
+		serviceSynced:     serviceInformer.Informer().HasSynced,
+		endpointLister:    endpointInformer.Lister(),
+		endpointSynced:    endpointInformer.Informer().HasSynced,
 		foosLister:        fooInformer.Lister(),
 		foosSynced:        fooInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
@@ -115,9 +130,9 @@ func NewController(
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when Foo resources change
 	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueFoo,
+		AddFunc: c.enqueueFoo,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueFoo(new)
+			c.enqueueFoo(new)
 		},
 	})
 	// Set up an event handler for when Deployment resources change. This
@@ -127,7 +142,7 @@ func NewController(
 	// handling Deployment resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
+		AddFunc: c.handleObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*appsv1.Deployment)
 			oldDepl := old.(*appsv1.Deployment)
@@ -136,12 +151,24 @@ func NewController(
 				// Two different versions of the same Deployment will always have different RVs.
 				return
 			}
-			controller.handleObject(new)
+			c.handleObject(new)
 		},
-		DeleteFunc: controller.handleObject,
+		DeleteFunc: c.handleObject,
 	})
 
-	return controller
+	serviceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.AddService,
+		UpdateFunc: c.UpdateService,
+		DeleteFunc: c.DeleteService,
+	})
+
+	endpointInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.AddEndpoint,
+		UpdateFunc: c.UpdateEndpoint,
+		DeleteFunc: c.DeleteEndpoint,
+	})
+
+	return c
 }
 
 // Run will set up the event handlers for types we are interested in, as well
