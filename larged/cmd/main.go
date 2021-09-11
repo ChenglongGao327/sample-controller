@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"k8s.io/sample-controller/larged/pkg/controller"
 	"time"
 
 	kubeinformers "k8s.io/client-go/informers"
@@ -29,7 +30,6 @@ import (
 
 	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
 	informers "k8s.io/sample-controller/pkg/generated/informers/externalversions"
-	"k8s.io/sample-controller/pkg/larged"
 	"k8s.io/sample-controller/pkg/signals"
 )
 
@@ -68,7 +68,7 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 
-	controller := larged.NewController(kubeClient, exampleClient,
+	controller := controller.NewController(kubeClient, exampleClient,
 		kubeInformerFactory.Apps().V1().Deployments(),
 		kubeInformerFactory.Core().V1().Services(),
 		kubeInformerFactory.Core().V1().Endpoints(),

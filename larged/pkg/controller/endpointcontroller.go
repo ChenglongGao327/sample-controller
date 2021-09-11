@@ -1,4 +1,4 @@
-package larged
+package controller
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func (c *Controller) AddEndpoint(obj interface{}) {
 		return
 	}
 
-	klog.Info("add Endpoints obj: %s/%s", ep.Name, ep.Namespace)
+	klog.Infof("add Endpoints obj: %s/%s", ep.Name, ep.Namespace)
 }
 
 func (c *Controller) UpdateEndpoint(cur, old interface{}) {
@@ -26,8 +26,9 @@ func (c *Controller) UpdateEndpoint(cur, old interface{}) {
 	if !ok {
 		return
 	}
-
-	klog.Infof("update Endpoints obj: oldEp: %s/%s --> curEp: %s/%s", oldEp.Name, oldEp.Namespace, curEp.Namespace, curEp.Namespace)
+	if curEp.Namespace != "local-path-storage" {
+		klog.Infof("update Endpoints obj: oldEp: %s/%s --> curEp: %s/%s", oldEp.Name, oldEp.Namespace, curEp.Namespace, curEp.Namespace)
+	}
 }
 
 func (c *Controller) DeleteEndpoint(obj interface{}) {
