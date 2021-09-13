@@ -18,7 +18,9 @@ package main
 
 import (
 	"flag"
+	"istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/sample-controller/larged/pkg/controller"
+	"k8s.io/sample-controller/larged/pkg/controller/seviceentrycontroller"
 	"time"
 
 	kubeinformers "k8s.io/client-go/informers"
@@ -82,4 +84,13 @@ func main() {
 	if err = controller.Run(2, stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
 	}
+
+	// service entry controller
+	istioClient, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("Error building istio clientset: %s", err.Error())
+	}
+	seController := seviceentrycontroller.NewServiceEntryController(istioClient)
+
+	seController.Run(stopCh)
 }

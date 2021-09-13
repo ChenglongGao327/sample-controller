@@ -5,9 +5,11 @@ module k8s.io/sample-controller
 go 1.16
 
 require (
-	k8s.io/api v0.0.0-20210825040442-f20796d02069
-	k8s.io/apimachinery v0.0.0-20210825040238-74be3b88bedb
-	k8s.io/client-go v0.0.0-20210827200652-b350fc31ceb9
+	istio.io/api v0.0.0-20210809175348-eff556fb5d8a
+	istio.io/client-go v1.11.2
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.21.0
+	k8s.io/client-go v0.21.0
 	k8s.io/code-generator v0.0.0-20210825160035-e7c2dcc7dff4
 	k8s.io/klog/v2 v2.9.0
 )
