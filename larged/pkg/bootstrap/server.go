@@ -58,6 +58,7 @@ func NewServer(args *LargedArgs) (*Server, error) {
 }
 
 func (s *Server) Run(stop <-chan struct{}) {
+	klog.Info("start server...")
 	go func() {
 		klog.Info("start k8s controller...")
 		if err := s.k8sController.Run(2, stop); err != nil {
@@ -69,4 +70,7 @@ func (s *Server) Run(stop <-chan struct{}) {
 		klog.Info("start istio controller...")
 		s.serviceEntryController.Run(stop)
 	}()
+	klog.Info("end server...")
+	<-stop
+	klog.Info("----over ")
 }

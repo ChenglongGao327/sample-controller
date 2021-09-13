@@ -28,7 +28,7 @@ func (c *Controller) UpdateService(cur, old interface{}) {
 		return
 	}
 
-	klog.Infof("update service obj: oldSvc: %s/%s --> curSvc: %s/%s", oldSvc.Name, oldSvc.Namespace, curSvc.Namespace, curSvc.Namespace)
+	klog.Infof("update service obj oldSvc: %s/%s --> curSvc: %s/%s", oldSvc.Name, oldSvc.Namespace, curSvc.Name, curSvc.Namespace)
 }
 
 func (c *Controller) DeleteService(obj interface{}) {
@@ -38,7 +38,6 @@ func (c *Controller) DeleteService(obj interface{}) {
 	}
 
 	klog.Infof("delete service obj: %s/%s", svc.Name, svc.Namespace)
-
 }
 
 func obj2Service(obj interface{}) (*corev1.Service, bool) {

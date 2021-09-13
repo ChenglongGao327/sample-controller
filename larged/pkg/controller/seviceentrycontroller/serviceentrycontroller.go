@@ -25,15 +25,12 @@ type ServiceEntryController struct {
 }
 
 func NewServiceEntryController(istioclient *istioclient.Clientset) *ServiceEntryController {
-	klog.Info("NewServiceEntryController-------------------")
 	seInformer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
-				klog.Info("list-------------------")
 				return istioclient.NetworkingV1beta1().ServiceEntries("").List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
-				klog.Info("watch-------------------")
 				return istioclient.NetworkingV1beta1().ServiceEntries("").Watch(context.TODO(), options)
 			},
 		},
@@ -107,7 +104,6 @@ func (c *ServiceEntryController) Run(stopCh <-chan struct{}) {
 
 func (c *ServiceEntryController) runWorker() {
 	for c.processNextItem() {
-
 	}
 }
 
