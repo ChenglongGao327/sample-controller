@@ -1,4 +1,4 @@
-package main
+package bootstrap
 
 import (
 	"istio.io/client-go/pkg/clientset/versioned"
@@ -17,6 +17,10 @@ type LargedArgs struct {
 	MasterUrl  string
 }
 
+func NewLargedArgs() *LargedArgs {
+	return &LargedArgs{}
+}
+
 type Server struct {
 	args                   *LargedArgs
 	serviceEntryController *seviceentrycontroller.ServiceEntryController
@@ -24,7 +28,7 @@ type Server struct {
 }
 
 func NewServer(args *LargedArgs) (*Server, error) {
-	cfg, err := clientcmd.BuildConfigFromFlags(args.KubeConfig, args.MasterUrl)
+	cfg, err := clientcmd.BuildConfigFromFlags(args.MasterUrl, args.KubeConfig)
 	if err != nil {
 		klog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
@@ -46,7 +50,7 @@ func NewServer(args *LargedArgs) (*Server, error) {
 	seController := seviceentrycontroller.NewServiceEntryController(istioClient)
 
 	s := &Server{
-		args:                   largedArgs,
+		args:                   args,
 		serviceEntryController: seController,
 		k8sController:          controller,
 	}
