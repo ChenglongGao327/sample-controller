@@ -1,4 +1,4 @@
-package app
+package bootstrap
 
 import (
 	"istio.io/client-go/pkg/clientset/versioned"
@@ -26,7 +26,7 @@ type Server struct {
 	args                    *LargedArgs
 	serviceEntryController  *seviceentrycontroller.ServiceEntryController
 	workloadEntryController *workloadentry.WorkEntryController
-	k8sController           *controller.Controller
+	k8sController           *controller.AggregationController
 }
 
 func NewServer(args *LargedArgs) (*Server, error) {
