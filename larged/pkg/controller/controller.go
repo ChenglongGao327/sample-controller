@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/sample-controller/pkg/generated/informers/externalversions"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,8 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appsinformers "k8s.io/client-go/informers/apps/v1"
-	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -42,7 +42,6 @@ import (
 	samplev1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
 	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
 	samplescheme "k8s.io/sample-controller/pkg/generated/clientset/versioned/scheme"
-	informers "k8s.io/sample-controller/pkg/generated/informers/externalversions/samplecontroller/v1alpha1"
 	listers "k8s.io/sample-controller/pkg/generated/listers/samplecontroller/v1alpha1"
 )
 
@@ -82,6 +81,9 @@ type Controller struct {
 	foosLister listers.FooLister
 	foosSynced cache.InformerSynced
 
+	kubeInformerFactory     kubeinformers.SharedInformerFactory
+	externalInformerFactory externalversions.SharedInformerFactory
+
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
 	// means we can ensure we only process a fixed amount of resources at a
@@ -96,11 +98,15 @@ type Controller struct {
 // NewController returns a new sample controller
 func NewController(
 	kubeclientset kubernetes.Interface,
-	sampleclientset clientset.Interface,
-	deploymentInformer appsinformers.DeploymentInformer,
-	serviceInformer corev1informers.ServiceInformer,
-	endpointInformer corev1informers.EndpointsInformer,
-	fooInformer informers.FooInformer) *Controller {
+	sampleclientset clientset.Interface) *Controller {
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclientset, time.Second*30)
+	exampleInformerFactory := externalversions.NewSharedInformerFactory(sampleclientset, time.Second*30)
+
+	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
+	serviceInformer := kubeInformerFactory.Core().V1().Services()
+	endpointInformer := kubeInformerFactory.Core().V1().Endpoints()
+	fooInformer := exampleInformerFactory.Samplecontroller().V1alpha1().Foos()
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
@@ -113,18 +119,20 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	c := &Controller{
-		kubeclientset:     kubeclientset,
-		sampleclientset:   sampleclientset,
-		deploymentsLister: deploymentInformer.Lister(),
-		deploymentsSynced: deploymentInformer.Informer().HasSynced,
-		serviceLister:     serviceInformer.Lister(),
-		serviceSynced:     serviceInformer.Informer().HasSynced,
-		endpointLister:    endpointInformer.Lister(),
-		endpointSynced:    endpointInformer.Informer().HasSynced,
-		foosLister:        fooInformer.Lister(),
-		foosSynced:        fooInformer.Informer().HasSynced,
-		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
-		recorder:          recorder,
+		kubeclientset:           kubeclientset,
+		sampleclientset:         sampleclientset,
+		kubeInformerFactory:     kubeInformerFactory,
+		externalInformerFactory: exampleInformerFactory,
+		deploymentsLister:       deploymentInformer.Lister(),
+		deploymentsSynced:       deploymentInformer.Informer().HasSynced,
+		serviceLister:           serviceInformer.Lister(),
+		serviceSynced:           serviceInformer.Informer().HasSynced,
+		endpointLister:          endpointInformer.Lister(),
+		endpointSynced:          endpointInformer.Informer().HasSynced,
+		foosLister:              fooInformer.Lister(),
+		foosSynced:              fooInformer.Informer().HasSynced,
+		workqueue:               workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
+		recorder:                recorder,
 	}
 
 	klog.Info("Setting up event handlers")
@@ -181,6 +189,11 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) error {
 
 	// Start the informer factories to begin populating the informer caches
 	klog.Info("Starting Foo controller")
+
+	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
+	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
+	c.kubeInformerFactory.Start(stopCh)
+	c.externalInformerFactory.Start(stopCh)
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
