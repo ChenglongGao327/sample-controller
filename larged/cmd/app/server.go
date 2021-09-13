@@ -1,4 +1,4 @@
-package bootstrap
+package app
 
 import (
 	"istio.io/client-go/pkg/clientset/versioned"

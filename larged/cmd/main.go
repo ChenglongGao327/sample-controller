@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 	"k8s.io/klog/v2"
-	"k8s.io/sample-controller/larged/pkg/bootstrap"
+	"k8s.io/sample-controller/larged/cmd/app"
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -27,7 +27,7 @@ import (
 	"k8s.io/sample-controller/pkg/signals"
 )
 
-var largedArgs *bootstrap.LargedArgs
+var largedArgs *app.LargedArgs
 
 func main() {
 	klog.InitFlags(nil)
@@ -37,7 +37,7 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
-	server, err := bootstrap.NewServer(largedArgs)
+	server, err := app.NewServer(largedArgs)
 	if err != nil {
 		klog.Fatalf("Failed to start larged: %s", err.Error())
 	}
@@ -46,7 +46,7 @@ func main() {
 }
 
 func addFlags() {
-	largedArgs = bootstrap.NewLargedArgs()
+	largedArgs = app.NewLargedArgs()
 	flag.StringVar(&largedArgs.KubeConfig, "kubeconfig", "/root/.kube/config", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&largedArgs.MasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }
